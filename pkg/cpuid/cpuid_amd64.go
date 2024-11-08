@@ -480,3 +480,13 @@ func (fs FeatureSet) archCheckHostCompatible(hfs FeatureSet) error {
 
 	return nil
 }
+
+// HWCap1 returns the HWCAP1 bits.
+func (fs FeatureSet) HWCap1() uint64 {
+	return fs.hwCap.hwCap1
+}
+
+// HWCap2 returns the HWCAP2 bits.
+func (fs FeatureSet) HWCap2() uint64 {
+	return fs.hwCap.hwCap2
+}
