@@ -44,9 +44,9 @@ type AddressableEndpointState struct {
 	// TODO(b/361075310): Enable s/r for the below fields.
 	//
 	// +checklocks:mu
-	endpoints map[tcpip.Address]*addressState `state:"nosave"`
+	endpoints map[tcpip.Address]*addressState
 	// +checklocks:mu
-	primary []*addressState `state:"nosave"`
+	primary []*addressState
 }
 
 // AddressableEndpointStateOptions contains options used to configure an

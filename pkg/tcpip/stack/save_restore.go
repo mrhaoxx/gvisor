@@ -26,4 +26,11 @@ import (
 func (s *Stack) afterLoad(context.Context) {
 	s.insecureRNG = rand.New(rand.NewSource(time.Now().UnixNano()))
 	s.secureRNG = cryptorand.RNGFrom(cryptorand.Reader)
+
+	// Remove old NICs.
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, nic := range s.nics {
+		nic.remove(true /* closeLinkEndpoint */)
+	}
 }

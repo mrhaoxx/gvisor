@@ -35,7 +35,11 @@ func (p *rawPacket) loadReceivedAt(_ context.Context, nsec int64) {
 
 // afterLoad is invoked by stateify.
 func (e *endpoint) afterLoad(ctx context.Context) {
-	stack.RestoreStackFromContext(ctx).RegisterRestoredEndpoint(e)
+	if e.stack.IsSaveRestoreEnabled() {
+		e.stack.RegisterRestoredEndpoint(e)
+	} else {
+		stack.RestoreStackFromContext(ctx).RegisterRestoredEndpoint(e)
+	}
 }
 
 // beforeSave is invoked by stateify.
@@ -46,16 +50,20 @@ func (e *endpoint) beforeSave() {
 
 // Restore implements tcpip.RestoredEndpoint.Restore.
 func (e *endpoint) Restore(s *stack.Stack) {
-	e.net.Resume(s)
-
 	e.setReceiveDisabled(false)
-	e.stack = s
-	e.ops.InitHandler(e, e.stack, tcpip.GetStackSendBufferLimits, tcpip.GetStackReceiveBufferLimits)
+	if saveRestoredEnabled := e.stack.IsSaveRestoreEnabled(); saveRestoredEnabled {
+		e.net.Resume(s)
+		e.ops.InitHandler(e, e.stack, tcpip.GetStackSendBufferLimits, tcpip.GetStackReceiveBufferLimits)
+	} else {
+		e.net.Resume(s)
+		e.stack = s
+		e.ops.InitHandler(e, e.stack, tcpip.GetStackSendBufferLimits, tcpip.GetStackReceiveBufferLimits)
 
-	if e.associated {
-		netProto := e.net.NetProto()
-		if err := e.stack.RegisterRawTransportEndpoint(netProto, e.transProto, e); err != nil {
-			panic(fmt.Sprintf("e.stack.RegisterRawTransportEndpoint(%d, %d, _): %s", netProto, e.transProto, err))
+		if e.associated {
+			netProto := e.net.NetProto()
+			if err := e.stack.RegisterRawTransportEndpoint(netProto, e.transProto, e); err != nil {
+				panic(fmt.Sprintf("e.stack.RegisterRawTransportEndpoint(%d, %d, _): %s", netProto, e.transProto, err))
+			}
 		}
 	}
 }

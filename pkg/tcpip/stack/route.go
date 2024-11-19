@@ -24,6 +24,8 @@ import (
 // Route represents a route through the networking stack to a given destination.
 //
 // It is safe to call Route's methods from multiple goroutines.
+//
+// +stateify savable
 type Route struct {
 	routeInfo routeInfo
 
@@ -33,7 +35,7 @@ type Route struct {
 	localAddressNIC *nic
 
 	// mu protects annotated fields below.
-	mu routeRWMutex
+	mu routeRWMutex `state:"nosave"`
 
 	// localAddressEndpoint is the local address this route is associated with.
 	// +checklocks:mu
@@ -53,7 +55,7 @@ type Route struct {
 	// neighborEntry is the cached result of fetching a neighbor entry from the
 	// neighbor cache.
 	// +checklocks:mu
-	neighborEntry *neighborEntry
+	neighborEntry *neighborEntry `state:"nosave"`
 
 	// mtu is the maximum transmission unit to use for this route.
 	// If mtu is 0, this field is ignored and the MTU of the outgoing NIC

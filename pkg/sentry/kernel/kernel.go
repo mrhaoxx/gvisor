@@ -831,6 +831,8 @@ func (k *Kernel) LoadFrom(ctx context.Context, r, pagesMetadata io.Reader, pages
 		return fmt.Errorf("failed to load memory files: %w", mfLoadErr)
 	}
 
+	k.Timekeeper().SetClocks(clocks, k.vdsoParams)
+
 	if !saveRestoreNet {
 		// rootNetworkNamespace and stack should be populated after
 		// loading the state file. Reset the stack before restoring the
@@ -838,8 +840,6 @@ func (k *Kernel) LoadFrom(ctx context.Context, r, pagesMetadata io.Reader, pages
 		k.rootNetworkNamespace.ResetStack()
 		k.rootNetworkNamespace.RestoreRootStack(net)
 	}
-
-	k.Timekeeper().SetClocks(clocks, k.vdsoParams)
 
 	if timeReady != nil {
 		close(timeReady)

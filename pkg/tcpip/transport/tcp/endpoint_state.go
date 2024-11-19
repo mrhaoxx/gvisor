@@ -159,21 +159,23 @@ func (e *Endpoint) Restore(s *stack.Stack) {
 	bind := func() {
 		e.mu.Lock()
 		defer e.mu.Unlock()
-		addr, _, err := e.checkV4MappedLocked(tcpip.FullAddress{Addr: e.BindAddr, Port: e.TransportEndpointInfo.ID.LocalPort}, true /* bind */)
-		if err != nil {
-			panic("unable to parse BindAddr: " + err.String())
-		}
-		portRes := ports.Reservation{
-			Networks:     e.effectiveNetProtos,
-			Transport:    ProtocolNumber,
-			Addr:         addr.Addr,
-			Port:         addr.Port,
-			Flags:        e.boundPortFlags,
-			BindToDevice: e.boundBindToDevice,
-			Dest:         e.boundDest,
-		}
-		if ok := e.stack.ReserveTuple(portRes); !ok {
-			panic(fmt.Sprintf("unable to re-reserve tuple (%v, %q, %d, %+v, %d, %v)", e.effectiveNetProtos, addr.Addr, addr.Port, e.boundPortFlags, e.boundBindToDevice, e.boundDest))
+		if !saveRestoreEnabled {
+			addr, _, err := e.checkV4MappedLocked(tcpip.FullAddress{Addr: e.BindAddr, Port: e.TransportEndpointInfo.ID.LocalPort}, true /* bind */)
+			if err != nil {
+				panic("unable to parse BindAddr: " + err.String())
+			}
+			portRes := ports.Reservation{
+				Networks:     e.effectiveNetProtos,
+				Transport:    ProtocolNumber,
+				Addr:         addr.Addr,
+				Port:         addr.Port,
+				Flags:        e.boundPortFlags,
+				BindToDevice: e.boundBindToDevice,
+				Dest:         e.boundDest,
+			}
+			if ok := e.stack.ReserveTuple(portRes); !ok {
+				panic(fmt.Sprintf("unable to re-reserve tuple (%v, %q, %d, %+v, %d, %v)", e.effectiveNetProtos, addr.Addr, addr.Port, e.boundPortFlags, e.boundBindToDevice, e.boundDest))
+			}
 		}
 		e.isPortReserved = true
 
@@ -201,6 +203,10 @@ func (e *Endpoint) Restore(s *stack.Stack) {
 		// Reset the scoreboard to reinitialize the sack information as
 		// we do not restore SACK information.
 		e.scoreboard.Reset()
+		if saveRestoreEnabled {
+			// Unregister the endpoint before registering again during Connect.
+			e.stack.UnregisterTransportEndpoint(e.effectiveNetProtos, header.TCPProtocolNumber, e.TransportEndpointInfo.ID, e, e.boundPortFlags, e.boundBindToDevice)
+		}
 		e.mu.Lock()
 		err := e.connect(tcpip.FullAddress{NIC: e.boundNICID, Addr: e.connectingAddress, Port: e.TransportEndpointInfo.ID.RemotePort}, false /* handshake */)
 		if _, ok := err.(*tcpip.ErrConnectStarted); !ok {

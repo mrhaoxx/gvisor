@@ -94,7 +94,7 @@ type Stack struct {
 
 	mu stackRWMutex `state:"nosave"`
 	// +checklocks:mu
-	nics map[tcpip.NICID]*nic `state:"nosave"`
+	nics map[tcpip.NICID]*nic
 	// +checklocks:mu
 	defaultForwardingEnabled map[tcpip.NetworkProtocolNumber]struct{}
 
@@ -1973,17 +1973,23 @@ func (s *Stack) ReplaceConfig(st *Stack) {
 	// Update route table.
 	s.SetRouteTable(st.GetRouteTable())
 
+	// Remove old NICs.
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, nic := range s.nics {
+		nic.remove(true /* closeLinkEndpoint */)
+	}
+
 	// Update NICs.
 	st.mu.Lock()
 	defer st.mu.Unlock()
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.nics = make(map[tcpip.NICID]*nic)
 	for id, nic := range st.nics {
 		nic.stack = s
 		s.nics[id] = nic
 		_ = s.NextNICID()
 	}
+	s.tables = st.tables
 }
 
 // Restore restarts the stack after a restore. This must be called after the
